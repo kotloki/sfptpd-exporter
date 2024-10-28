@@ -13,7 +13,7 @@ type Stats struct {
 	Time        string `json:"time"`
 	ClockMaster struct {
 		Name string `json:"name"`
-		Time string `json:"time"`
+		Time string `json:"time,omitempty"`
 	} `json:"clock-master"`
 	ClockSlave struct {
 		Name             string `json:"name"`
@@ -45,7 +45,7 @@ func setBool(gauge prometheus.Gauge, value bool) {
 
 // parseTime6 parses a time string in the format "2022-07-29 15:52:46.121677"
 func parseTime6(timeStr string) (int64, error) {
-	t, err := time.Parse("2006-01-02 15:04:05.000000", timeStr)
+	t, err := time.Parse("2006-01-02 15:04:05.999999", timeStr)
 	if err != nil {
 		return -1, err
 	}
@@ -54,7 +54,7 @@ func parseTime6(timeStr string) (int64, error) {
 
 // parseTime9 parses a time string in the format "2022-07-29 15:52:46.121677000"
 func parseTime9(timeStr string) (int64, error) {
-	t, err := time.Parse("2006-01-02 15:04:05.000000000", timeStr)
+	t, err := time.Parse("2006-01-02 15:04:05.999999999", timeStr)
 	if err != nil {
 		return -1, err
 	}
@@ -76,10 +76,16 @@ func processLine(line string) {
 	if err != nil {
 		log.Warnf("Error parsing time: %s", err)
 	}
-	masterTime, err := parseTime9(stats.ClockMaster.Time)
-	if err != nil {
-		log.Warnf("Error parsing master time %s: %s", stats.ClockMaster.Time, err)
+	
+	if stats.ClockMaster.Time != "" {
+		masterTime, err := parseTime9(stats.ClockMaster.Time)
+		if err != nil {
+			log.Infof("Error parsing master time %s: %s", stats.ClockMaster.Time, err)
+		} else {
+			metricMaster.With(map[string]string{"instance": stats.Instance, "name": stats.ClockMaster.Name}).Set(float64(masterTime))
+		}
 	}
+	
 	slaveTime, err := parseTime9(stats.ClockSlave.Time)
 	if err != nil {
 		log.Warnf("Error parsing slave time %s: %s", stats.ClockSlave.Time, err)
