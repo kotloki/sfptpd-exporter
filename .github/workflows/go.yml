@@ -1,0 +1,70 @@
+# This workflow will build a golang project
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
+
+name: Go go sfptpd_exporter
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [linux]
+        arch: [amd64, 386, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+  
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.18'
+  
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: 0
+        run: |
+          mkdir -p build/${{ matrix.os }}_${{ matrix.arch }}
+          go build -a -o build/${{ matrix.os }}_${{ matrix.arch }}/sfptpd_exporter
+  
+      - name: Package binary
+        run: |
+          mkdir -p release
+          tar -czf release/sfptpd_exporter-${{ github.ref_name }}.${{ matrix.os }}-${{ matrix.arch }}.tar.gz -C build/${{ matrix.os }}_${{ matrix.arch }} sfptpd_exporter
+  
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: binaries
+          path: release/*.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: binaries
+          path: release
+  
+      - name: List files
+        run: ls -R release
+  
+      - name: Create Release and Upload Assets
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.ref_name }}
+          releaseName: Release ${{ github.ref_name }}
+          artifacts: release/*.tar.gz
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: false
+          prerelease: false
