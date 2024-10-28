@@ -12,13 +12,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var version = "dev"
+var version = "0.0.8"
 
 var (
 	statsFile     = flag.String("f", "/tmp/sfptpd_stats.jsonl", "sfptpd stats JSONL file")
 	metricsListen = flag.String("l", ":9979", "metrics listen address")
 	verbose       = flag.Bool("v", false, "Enable verbose logging")
 	trace         = flag.Bool("vv", false, "Enable extra verbose logging")
+	showVersion   = flag.Bool("version", false, "Show application version and exit")
 )
 
 var (
@@ -84,6 +85,12 @@ func tailLogFile(filename string) {
 
 func main() {
 	flag.Parse()
+
+    if *showVersion {
+        fmt.Printf("sfptpd-exporter version %s\n", version)
+        os.Exit(0)
+    }
+
 	if *verbose {
 		log.SetLevel(log.DebugLevel)
 		log.Debug("Running in verbose mode")
@@ -100,7 +107,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error opening JSONL file: %s", err)
 	}
-	go tailLogFile(*statsFile)
+	reader := bufio.NewReader(file)
+
+	go func() {
+		for {
+			scanner := bufio.NewScanner(reader)
+			scanner.Split(bufio.ScanLines)
+			for scanner.Scan() {
+				processLine(scanner.Text())
+			}
+		}
+	}()
 
 	// Metrics server
 	metricsMux := http.NewServeMux()

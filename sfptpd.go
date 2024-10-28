@@ -80,12 +80,12 @@ func processLine(line string) {
 	if stats.ClockMaster.Time != "" {
 		masterTime, err := parseTime9(stats.ClockMaster.Time)
 		if err != nil {
-			log.Infof("Error parsing master time %s: %s", stats.ClockMaster.Time, err)
+			log.Debugf("Error parsing master time %s: %s", stats.ClockMaster.Time, err)
 		} else {
 			metricMaster.With(map[string]string{"instance": stats.Instance, "name": stats.ClockMaster.Name}).Set(float64(masterTime))
 		}
 	}
-	
+
 	slaveTime, err := parseTime9(stats.ClockSlave.Time)
 	if err != nil {
 		log.Warnf("Error parsing slave time %s: %s", stats.ClockSlave.Time, err)
