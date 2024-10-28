@@ -33,7 +33,7 @@ jobs:
           CGO_ENABLED: 0
         run: |
           mkdir -p build/${{ matrix.os }}_${{ matrix.arch }}
-          go build -a -o build/${{ matrix.os }}_${{ matrix.arch }}/sfptpd_exporter
+          go build -ldflags "-X main.version=${{ github.ref_name }}" -a -o build/${{ matrix.os }}_${{ matrix.arch }}/sfptpd_exporter
   
       - name: Package binary
         run: |
