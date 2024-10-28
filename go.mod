@@ -1,4 +1,4 @@
-module github.com/natesales/sfptpd-exporter
+module github.com/koloki/sfptpd-exporter
 
 go 1.18
 
