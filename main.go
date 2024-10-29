@@ -1,9 +1,10 @@
 package main
 
 import (
-	"flag"
-	"net/http"
-	"os"
+    "flag"
+    "fmt"
+    "net/http"
+    "os"
 
 	"github.com/hpcloud/tail"
 	"github.com/prometheus/client_golang/prometheus"
@@ -12,7 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var version = "0.0.8"
+var version = "0.0.9"
 
 var (
 	statsFile     = flag.String("f", "/tmp/sfptpd_stats.jsonl", "sfptpd stats JSONL file")
@@ -107,17 +108,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error opening JSONL file: %s", err)
 	}
-	reader := bufio.NewReader(file)
 
-	go func() {
-		for {
-			scanner := bufio.NewScanner(reader)
-			scanner.Split(bufio.ScanLines)
-			for scanner.Scan() {
-				processLine(scanner.Text())
-			}
-		}
-	}()
+	go tailLogFile(*statsFile)
 
 	// Metrics server
 	metricsMux := http.NewServeMux()
