@@ -62,46 +62,51 @@ func parseTime9(timeStr string) (int64, error) {
 }
 
 func processLine(line string) {
-	var stats Stats
-	err := json.Unmarshal([]byte(line), &stats)
-	if err != nil {
-		log.Errorf("Error parsing JSON: %s", err)
-		return
-	}
-	log.Debugf("Parsed stats: %+v", stats)
+    var stats Stats
+    err := json.Unmarshal([]byte(line), &stats)
+    if err != nil {
+        log.Errorf("Error parsing JSON: %s", err)
+        return
+    }
+    log.Debugf("Parsed stats: %+v", stats)
 
-	gaugeVec(metricLastUpdate, stats.Instance).Set(float64(time.Now().UTC().UnixNano() / 1000000))
+    gaugeVec(metricLastUpdate, stats.Instance).Set(float64(time.Now().UTC().UnixNano() / 1000000))
 
-	t, err := parseTime6(stats.Time)
-	if err != nil {
-		log.Warnf("Error parsing time: %s", err)
-	}
-	
-	if stats.ClockMaster.Time != "" {
-		masterTime, err := parseTime9(stats.ClockMaster.Time)
-		if err != nil {
-			log.Debugf("Error parsing master time %s: %s", stats.ClockMaster.Time, err)
-		} else {
-			metricMaster.With(map[string]string{"instance": stats.Instance, "name": stats.ClockMaster.Name}).Set(float64(masterTime))
-		}
-	}
+    t, err := parseTime6(stats.Time)
+    if err != nil {
+        log.Warnf("Error parsing time: %s", err)
+    }
+    gaugeVec(metricTime, stats.Instance).Set(float64(t))
 
-	slaveTime, err := parseTime9(stats.ClockSlave.Time)
-	if err != nil {
-		log.Warnf("Error parsing slave time %s: %s", stats.ClockSlave.Time, err)
-	}
-	gaugeVec(metricTime, stats.Instance).Set(float64(t))
-	metricMaster.With(map[string]string{"instance": stats.Instance, "name": stats.ClockMaster.Name}).Set(float64(masterTime))
-	metricSlave.With(map[string]string{
-		"instance":          stats.Instance,
-		"name":              stats.ClockSlave.Name,
-		"primary_interface": stats.ClockSlave.PrimaryInterface,
-	}).Set(float64(slaveTime))
-	setBool(gaugeVec(metricIsDisciplining, stats.Instance), stats.IsDisciplining)
-	setBool(gaugeVec(metricInSync, stats.Instance), stats.InSync)
-	gaugeVec(metricAlarms, stats.Instance).Set(float64(len(stats.Alarms)))
-	gaugeVec(metricOffset, stats.Instance).Set(stats.Stats.Offset)
-	gaugeVec(metricFreqAdj, stats.Instance).Set(stats.Stats.FreqAdj)
-	gaugeVec(metricPTerm, stats.Instance).Set(stats.Stats.PTerm)
-	gaugeVec(metricITerm, stats.Instance).Set(stats.Stats.ITerm)
+    var masterTime int64 // Refresh masterTime
+    if stats.ClockMaster.Time != "" {
+        masterTime, err = parseTime9(stats.ClockMaster.Time)
+        if err != nil {
+            log.Debugf("Error parsing master time %s: %s", stats.ClockMaster.Time, err)
+            masterTime = 0 // Value by default
+        }
+    } else {
+        log.Debugf("ClockMaster.Time is empty")
+        masterTime = 0 // Value by default
+    }
+    metricMaster.With(map[string]string{"instance": stats.Instance, "name": stats.ClockMaster.Name}).Set(float64(masterTime))
+
+    slaveTime, err := parseTime9(stats.ClockSlave.Time)
+    if err != nil {
+        log.Warnf("Error parsing slave time %s: %s", stats.ClockSlave.Time, err)
+    }
+    metricSlave.With(map[string]string{
+        "instance":          stats.Instance,
+        "name":              stats.ClockSlave.Name,
+        "primary_interface": stats.ClockSlave.PrimaryInterface,
+    }).Set(float64(slaveTime))
+
+    setBool(gaugeVec(metricIsDisciplining, stats.Instance), stats.IsDisciplining)
+    setBool(gaugeVec(metricInSync, stats.Instance), stats.InSync)
+    gaugeVec(metricAlarms, stats.Instance).Set(float64(len(stats.Alarms)))
+    gaugeVec(metricOffset, stats.Instance).Set(stats.Stats.Offset)
+    gaugeVec(metricFreqAdj, stats.Instance).Set(stats.Stats.FreqAdj)
+    gaugeVec(metricPTerm, stats.Instance).Set(stats.Stats.PTerm)
+    gaugeVec(metricITerm, stats.Instance).Set(stats.Stats.ITerm)
 }
+
